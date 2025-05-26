@@ -16,7 +16,9 @@
 #ifndef MAG_INTERFACE
 #define MAG_INTERFACE
 
-#include <sensor_msgs/msg/magnetic_field.h>
+// #include <sensor_msgs/msg/magnetic_field.h>
+#include "ros_like_format.h"
+
 #include "config.h"
 
 #ifndef MAG_COV
@@ -30,10 +32,10 @@ class MAGInterface
         const float mag_cov[3] = MAG_COV;
 
     public:
-        MAGInterface()
-        {
-            mag_msg_.header.frame_id = micro_ros_string_utilities_set(mag_msg_.header.frame_id, "imu_link");
-        }
+        // MAGInterface()
+        // {
+        //     mag_msg_.header.frame_id = micro_ros_string_utilities_set(mag_msg_.header.frame_id, "imu_link");
+        // }
 
         virtual geometry_msgs__msg__Vector3 readMagnetometer() = 0;
         virtual bool startSensor() = 0;

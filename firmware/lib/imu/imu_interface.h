@@ -15,7 +15,9 @@
 #ifndef IMU_INTERFACE
 #define IMU_INTERFACE
 
-#include <sensor_msgs/msg/imu.h>
+// #include <sensor_msgs/msg/imu.h>
+#include "ros_like_format.h"
+
 #include "config.h"
 
 #ifndef ACCEL_COV
@@ -63,10 +65,10 @@ class IMUInterface
         }
 
     public:
-        IMUInterface()
-        {
-            imu_msg_.header.frame_id = micro_ros_string_utilities_set(imu_msg_.header.frame_id, "imu_link");
-        }
+        // IMUInterface()
+        // {
+        //     imu_msg_.header.frame_id = micro_ros_string_utilities_set(imu_msg_.header.frame_id, "imu_link");
+        // }
 
         virtual geometry_msgs__msg__Vector3 readAccelerometer() = 0;
         virtual geometry_msgs__msg__Vector3 readGyroscope() = 0;
@@ -103,7 +105,7 @@ class IMUInterface
             imu_msg_.angular_velocity_covariance[4] = gyro_cov[1];
             imu_msg_.angular_velocity_covariance[8] = gyro_cov[2];
 
-            imu_msg_.linear_acceleration = readAccelerometer();
+            imu_msg_.angular_velocity = readAccelerometer();
             imu_msg_.linear_acceleration_covariance[0] = accel_cov[0];
             imu_msg_.linear_acceleration_covariance[4] = accel_cov[1];
             imu_msg_.linear_acceleration_covariance[8] = accel_cov[2];
