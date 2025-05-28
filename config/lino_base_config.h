@@ -228,7 +228,7 @@ ROBOT ORIENTATION
 // #define ECHO_PIN 32
 // #define USE_SHORT_BRAKE // for shorter stopping distance
 // #define WDT_TIMEOUT 30 // Sec
-#define BOARD_INIT { Wire.begin(); } // needed for i2cdetect
+// #define BOARD_INIT { Wire.begin(); } // needed for i2cdetect
 // #define BOARD_INIT_LATE {}
 // #define BOARD_LOOP {}
 // #define JOINT_STATE_SUBSCRIBER "joint_states"

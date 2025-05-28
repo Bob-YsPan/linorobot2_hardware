@@ -13,7 +13,7 @@
 // limitations under the License.
 #include <Arduino.h>
 // #include <micro_ros_platformio.h>
-#include <i2cdetect.h>
+// #include <i2cdetect.h>
 
 /*
 #include <rcl/rcl.h>
@@ -37,8 +37,8 @@
 #include "kinematics.h"
 #include "pid.h"
 // #include "odometry.h"
-#include "imu.h"
-#include "mag.h"
+// #include "imu.h"
+// #include "mag.h"
 #define ENCODER_USE_INTERRUPTS
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include "encoder.h"
@@ -112,7 +112,6 @@ static inline void set_microros_net_transports(IPAddress agent_ip, uint16_t agen
 */
 
 Twist twist_msg;
-sensor_msgs__msg__Imu imu_msg;
 
 // 250526 Disable function
 /*
@@ -138,7 +137,7 @@ rcl_timer_t control_timer;
 */
 
 // unsigned long long time_offset = 0;
-// unsigned long prev_cmd_time = 0;
+unsigned long prev_cmd_time = 0;
 // unsigned long prev_odom_update = 0;
 // float prev_voltage;
 
@@ -186,8 +185,8 @@ Kinematics kinematics(
 );
 
 // Odometry odometry;
-IMU imu;
-MAG mag;
+// IMU imu;
+// MAG mag;
 
 void flashLED(int n_times)
 {
@@ -539,15 +538,19 @@ bool destroyEntities()
 void setup()
 {
     Serial.begin(BAUDRATE);
+    Serial1.begin(115200);
+    // Set timeout to waiting data
+    Serial.setTimeout(1000);
+    Serial1.setTimeout(1000);
 // #ifdef ESP32
 //     Serial.setRxBufferSize(1024);
 // #endif
     initLed();
-#ifdef BOARD_INIT // board specific setup, must include Wire.begin
-    BOARD_INIT
-#else
-    Wire.begin();
-#endif
+// #ifdef BOARD_INIT // board specific setup, must include Wire.begin
+//     BOARD_INIT
+// #else
+//     Wire.begin();
+// #endif
 
 // #ifdef WDT_TIMEOUT
 //     esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
@@ -555,36 +558,36 @@ void setup()
 // #endif
 //     initWifis();
 //     initOta();
-    i2cdetect();  // default range from 0x03 to 0x77
+    // i2cdetect();  // default range from 0x03 to 0x77
     initPwm();
     motor1_controller.begin();
     motor2_controller.begin();
     motor3_controller.begin();
     motor4_controller.begin();
-    bool imu_ok = imu.init();
-    if (!imu_ok) // take IMU failure as fatal
-    {
-        Serial.println("IMU init failed");
-        // syslog(LOG_INFO, "%s IMU init failed %lu", __FUNCTION__, millis());
-        while (1)
-        {
-            flashLED(3); // flash 3 times
-            // runWifis();
-            // runOta();
-        }
-    }
-    bool mag_ok = mag.init();
-    if (!mag_ok) // take IMU failure as fatal
-    {
-        Serial.println("MAG init failed");
-        // syslog(LOG_INFO, "%s MAG init failed %lu", __FUNCTION__, millis());
-        while (1)
-        {
-            flashLED(4); // flash 4 times
-            // runWifis();
-            // runOta();
-        }
-    }
+    // bool imu_ok = imu.init();
+    // if (!imu_ok) // take IMU failure as fatal
+    // {
+    //     Serial1.println("IMU init failed");
+    //     // syslog(LOG_INFO, "%s IMU init failed %lu", __FUNCTION__, millis());
+    //     while (1)
+    //     {
+    //         flashLED(3); // flash 3 times
+    //         // runWifis();
+    //         // runOta();
+    //     }
+    // }
+    // bool mag_ok = mag.init();
+    // if (!mag_ok) // take IMU failure as fatal
+    // {
+    //     Serial1.println("MAG init failed");
+    //     // syslog(LOG_INFO, "%s MAG init failed %lu", __FUNCTION__, millis());
+    //     while (1)
+    //     {
+    //         flashLED(4); // flash 4 times
+    //         // runWifis();
+    //         // runOta();
+    //     }
+    // }
     // initBattery();
     // initRange();
     // initLidar(); // after wifi connected
@@ -614,9 +617,17 @@ void setup()
 //     BOARD_INIT_LATE
 // #endif
 //     syslog(LOG_INFO, "%s Ready %lu", __FUNCTION__, millis());
+    
+    // Give a initial state
+    state = WAIT_SERVER;
 }
 
 void loop() {
+    switch (state)
+    {
+        case WAIT_SERVER:
+            while(!Serial.available())
+    }
 //     switch (state)
 //     {
 //         case WAITING_AGENT:
