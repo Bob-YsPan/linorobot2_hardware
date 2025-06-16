@@ -1,179 +1,30 @@
-// Copyright (c) 2021 Juan Miguel Jimeno
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 #include <Arduino.h>
-// #include <micro_ros_platformio.h>
-// #include <i2cdetect.h>
+#include <pwm.h>
+#include <encoder.h>
+#include <motor.h>
+#include <pid.h>
+#include <kinematics.h>
 
-/*
-#include <rcl/rcl.h>
-#include <rclc/rclc.h>
-#include <rclc/executor.h>
-
-#include <nav_msgs/msg/odometry.h>
-#include <sensor_msgs/msg/imu.h>
-#include <sensor_msgs/msg/joint_state.h>
-#include <sensor_msgs/msg/magnetic_field.h>
-#include <sensor_msgs/msg/battery_state.h>
-#include <sensor_msgs/msg/range.h>
-#include <geometry_msgs/msg/twist.h>
-#include <geometry_msgs/msg/vector3.h>
-*/
-
-#include "config.h"
-// #include "syslog.h"
-#include "led.h"
-#include "motor.h"
-#include "kinematics.h"
-#include "pid.h"
-// #include "odometry.h"
-// #include "imu.h"
-// #include "mag.h"
-#define ENCODER_USE_INTERRUPTS
-#define ENCODER_OPTIMIZE_INTERRUPTS
-#include "encoder.h"
-// #include "battery.h"
-// #include "range.h"
-// #include "lidar.h"
-// #include "wifis.h"
-// #include "ota.h"
-#include "pwm.h"
-
-#include "ros_like_format.h"
-
-// 250526 Not use for teensy
-/*
-#ifdef WDT_TIMEOUT
-#include <esp_task_wdt.h>
-#endif
-#ifdef MICRO_ROS_TRANSPORT_ARDUINO_WIFI
-// remove wifi initialization code from wifi transport
-static inline void set_microros_net_transports(IPAddress agent_ip, uint16_t agent_port)
-{
-    static struct micro_ros_agent_locator locator;
-    locator.address = agent_ip;
-    locator.port = agent_port;
-
-    rmw_uros_set_custom_transport(
-        false,
-        (void *) &locator,
-        platformio_transport_open,
-        platformio_transport_close,
-        platformio_transport_write,
-        platformio_transport_read
-    );
-}
-#endif
-*/
-
-#ifndef BAUDRATE
-#define BAUDRATE 921600
-#endif
-
-#ifndef NODE_NAME
-#define NODE_NAME "linorobot_base_node"
-#endif
-#ifndef TOPIC_PREFIX
-#define TOPIC_PREFIX
-#endif
-#ifndef CONTROL_TIMER
-#define CONTROL_TIMER 20 // 50Hz
-#endif
-#ifndef BATTERY_TIMER
-#define BATTERY_TIMER 2000 // 2 sec
-#endif
-#ifndef RANGE_TIMER
-#define RANGE_TIMER 100 // 10Hz
-#endif
-
-// 250526 Disable function
-/*
-#ifndef RCCHECK
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){rclErrorLoop();}}
-#endif
-#ifndef RCSOFTCHECK
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
-#endif
-#define EXECUTE_EVERY_N_MS(MS, X)  do { \
-  static volatile int64_t init = -1; \
-  if (init == -1) { init = uxr_millis();} \
-  if (uxr_millis() - init > MS) { X; init = uxr_millis();} \
-} while (0)
-*/
-
-Twist twist_msg;
-
-// 250526 Disable function
-/*
-rcl_publisher_t odom_publisher;
-rcl_publisher_t imu_publisher;
-rcl_publisher_t mag_publisher;
-rcl_subscription_t twist_subscriber;
-rcl_publisher_t battery_publisher;
-rcl_publisher_t range_publisher;
-
-nav_msgs__msg__Odometry odom_msg;
-sensor_msgs__msg__Imu imu_msg;
-sensor_msgs__msg__MagneticField mag_msg;
-geometry_msgs__msg__Twist twist_msg;
-sensor_msgs__msg__BatteryState battery_msg;
-sensor_msgs__msg__Range range_msg;
-
-rclc_executor_t executor;
-rclc_support_t support;
-rcl_allocator_t allocator;
-rcl_node_t node;
-rcl_timer_t control_timer;
-*/
-
-// unsigned long long time_offset = 0;
-unsigned long prev_cmd_time = 0;
-// unsigned long prev_odom_update = 0;
-// float prev_voltage;
-
-// 250526 Disable function
-/*
-enum states
-{
-  WAITING_AGENT,
-  AGENT_AVAILABLE,
-  AGENT_CONNECTED,
-  AGENT_DISCONNECTED
-} state;
-*/
-
-enum states
-{
-  WAIT_SERVER,
-  SERVER_CONNECTED,
-  SERVER_DISCONNECTED
-} state;
-
+// 部分物件重寫了資料格式於 ros_like_format.h ，擺脫對MicroROS的依賴
+// Encoder object (Original)
 Encoder motor1_encoder(MOTOR1_ENCODER_A, MOTOR1_ENCODER_B, COUNTS_PER_REV1, MOTOR1_ENCODER_INV);
 Encoder motor2_encoder(MOTOR2_ENCODER_A, MOTOR2_ENCODER_B, COUNTS_PER_REV2, MOTOR2_ENCODER_INV);
 Encoder motor3_encoder(MOTOR3_ENCODER_A, MOTOR3_ENCODER_B, COUNTS_PER_REV3, MOTOR3_ENCODER_INV);
 Encoder motor4_encoder(MOTOR4_ENCODER_A, MOTOR4_ENCODER_B, COUNTS_PER_REV4, MOTOR4_ENCODER_INV);
 
+// Motor object (Original)
 Motor motor1_controller(PWM_FREQUENCY, PWM_BITS, MOTOR1_INV, MOTOR1_PWM, MOTOR1_IN_A, MOTOR1_IN_B);
 Motor motor2_controller(PWM_FREQUENCY, PWM_BITS, MOTOR2_INV, MOTOR2_PWM, MOTOR2_IN_A, MOTOR2_IN_B);
 Motor motor3_controller(PWM_FREQUENCY, PWM_BITS, MOTOR3_INV, MOTOR3_PWM, MOTOR3_IN_A, MOTOR3_IN_B);
 Motor motor4_controller(PWM_FREQUENCY, PWM_BITS, MOTOR4_INV, MOTOR4_PWM, MOTOR4_IN_A, MOTOR4_IN_B);
 
+// Motor object (Original)
 PID motor1_pid(PWM_MIN, PWM_MAX, K_P, K_I, K_D);
 PID motor2_pid(PWM_MIN, PWM_MAX, K_P, K_I, K_D);
 PID motor3_pid(PWM_MIN, PWM_MAX, K_P, K_I, K_D);
 PID motor4_pid(PWM_MIN, PWM_MAX, K_P, K_I, K_D);
 
+// Kinematics object (Original)
 Kinematics kinematics(
     Kinematics::LINO_BASE,
     MOTOR_MAX_RPM,
@@ -181,488 +32,305 @@ Kinematics kinematics(
     MOTOR_OPERATING_VOLTAGE,
     MOTOR_POWER_MAX_VOLTAGE,
     WHEEL_DIAMETER,
-    LR_WHEELS_DISTANCE
-);
+    LR_WHEELS_DISTANCE);
 
-// Odometry odometry;
-// IMU imu;
-// MAG mag;
+// Timer variables
+uint32_t last_ping_time;
+uint32_t last_spd_time;
+uint32_t last_ctrl_time;
+uint32_t last_recv_time;
 
-void flashLED(int n_times)
+// Flag for check client online or not
+bool nocs_online;
+
+// Variables to store the speed received from NOCS
+float control_spd_x = 0.0;
+float control_spd_y = 0.0;
+float control_spd_rz = 0.0;
+
+void setup()
 {
-    for(int i=0; i<n_times; i++)
-    {
-        setLed(HIGH);
-        delay(150);
-        setLed(LOW);
-        delay(150);
-    }
-    delay(1000);
+    // 通訊介面（對 ROS2）
+    Serial.begin(115200);
+    // Set timeout prevent program stuck when serial data problem
+    Serial.setTimeout(100);
+    //   Serial1.begin(115200);  // 測試指令介面（安裝另一個UART Converter後可以擴充這部分）
+    //   Serial1.println("MCU Ready!");
+    // Init status LED
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, 0);
+
+    // Initalize the base's function
+    initPwm();
+    motor1_controller.begin();
+    motor2_controller.begin();
+    motor3_controller.begin();
+    motor4_controller.begin();
+
+    // Initalize the timer
+    uint32_t now_time = millis();
+    last_ping_time = now_time;
+    last_spd_time = now_time;
+    last_ctrl_time = now_time;
+    last_recv_time = now_time;
+
+    // Set the inital client status
+    nocs_online = false;
 }
 
-void fullStop()
+// Blink LED function, it will stuck program about 200ms!
+// Use carefully!
+void blinkLED(int count)
 {
-    twist_msg.linear.x = 0.0;
-    twist_msg.linear.y = 0.0;
-    twist_msg.angular.z = 0.0;
-
-    motor1_controller.brake();
-    motor2_controller.brake();
-    motor3_controller.brake();
-    motor4_controller.brake();
-}
-
-void rclErrorLoop()
-{
-    while(true)
+    for (int i = 0; i < count; i++)
     {
-        flashLED(2); // flash 2 times
-        // runOta();
+        digitalWrite(LED_BUILTIN, 1);
+        delay(100);
+        digitalWrite(LED_BUILTIN, 0);
+        delay(100);
     }
 }
 
-void moveBase()
+// XOR checksum calculate function
+// Usage:
+// length = length of payload to generate checksum
+// payload = pointer for the payload's start point
+// (Start from array's third element: &payload[2])
+char chksum_cal(int length, char *payload)
 {
-    // brake if there's no command received, or when it's only the first command sent
-    if(((millis() - prev_cmd_time) >= 200))
+    char chksum_calc = 0;
+    for (int i = 0; i < length; i++)
     {
-        twist_msg.linear.x = 0.0;
-        twist_msg.linear.y = 0.0;
-        twist_msg.angular.z = 0.0;
-        setLed(HIGH);
+        chksum_calc ^= payload[i];
     }
+    return chksum_calc;
+}
+
+// Handle the request packet(PING and Time request)
+void handleRequestPacket(char *payload, int len)
+{
+    // Define the payload's pattern of these request
+    const char PING[4] = {'P', 'i', 'n', 'g'};
+    const char TIME_REQUEST[4] = {'T', 'i', 'm', 'e'};
+    // Check the payload's pattern
+    // PING request
+    if (memcmp(payload, PING, 4) == 0)
+    {
+        // Hint connected signal
+        if (!nocs_online)
+            blinkLED(3);
+        // Raise the client online flag
+        nocs_online = true;
+        // Reset client timeout
+        last_ping_time = millis();
+    }
+    // TIME request
+    else if (memcmp(payload, TIME_REQUEST, 4) == 0)
+    {
+        // Get current timer's value
+        uint32_t now_time = millis();
+        // Generate TIME packet to NOCS,
+        // NOCS will calculate the difference between ROS wallclock and MCU's timer
+        // Empty packet
+        char packet[10] = {0};
+        // Put header
+        packet[0] = 'A';
+        packet[1] = 't';
+        // Put lenght
+        packet[2] = 4;
+        // Payload: now_time as 4 bytes (little endian assumed)
+        memcpy(&packet[3], &now_time, 4);
+        // Checksum
+        packet[7] = chksum_cal(4, &packet[3]);
+        // Footer
+        packet[8] = 'p';
+        packet[9] = 'k';
+        // Send packet
+        Serial.write(packet, 10);
+    }
+}
+
+// Parse control speed payload
+void handleControlSpeed(char *payload, int len)
+{
+    // Reset timer
+    last_ctrl_time = millis();
+    // Lit LED to hint user the control speed received
+    digitalWrite(LED_BUILTIN, 1);
+    // Copy 4 bytes for each float (assuming IEEE 754 float and little-endian)
+    // Put to the global vars, and then sendRobotSpeed() will drive motors
+    memcpy(&control_spd_x, payload, 4);       // bytes 0-3
+    memcpy(&control_spd_y, payload + 4, 4);   // bytes 4-7
+    memcpy(&control_spd_rz, payload + 20, 4); // bytes 20-23
+}
+
+// Drive motor and send RobotSpeed packet
+void sendRobotSpeed()
+{
+    // These program keep the original logic to drive motor correctly
     // get the required rpm for each motor based on required velocities, and base used
     Kinematics::rpm req_rpm = kinematics.getRPM(
-        twist_msg.linear.x,
-        twist_msg.linear.y,
-        twist_msg.angular.z
-    );
-
+        control_spd_x,
+        control_spd_y,
+        control_spd_rz);
     // get the current speed of each motor
     float current_rpm1 = motor1_encoder.getRPM();
     float current_rpm2 = motor2_encoder.getRPM();
     float current_rpm3 = motor3_encoder.getRPM();
     float current_rpm4 = motor4_encoder.getRPM();
-
     // the required rpm is capped at -/+ MAX_RPM to prevent the PID from having too much error
     // the PWM value sent to the motor driver is the calculated PID based on required RPM vs measured RPM
     motor1_controller.spin(motor1_pid.compute(req_rpm.motor1, current_rpm1));
     motor2_controller.spin(motor2_pid.compute(req_rpm.motor2, current_rpm2));
     motor3_controller.spin(motor3_pid.compute(req_rpm.motor3, current_rpm3));
     motor4_controller.spin(motor4_pid.compute(req_rpm.motor4, current_rpm4));
-
+    // Calculate the Kinematics of our robot
     Kinematics::velocities current_vel = kinematics.getVelocities(
         current_rpm1,
         current_rpm2,
         current_rpm3,
-        current_rpm4
-    );
+        current_rpm4);
 
-    // unsigned long now = millis();
-    // float vel_dt = (now - prev_odom_update) / 1000.0;
-    // prev_odom_update = now;
-    // odometry.update(
-    //     vel_dt,
-    //     current_vel.linear_x,
-    //     current_vel.linear_y,
-    //     current_vel.angular_z
-    // );
-}
-
-// ===========NEW IMPLEMENT=============
-// bool syncTime()
-// {
-//     const int timeout_ms = 1000;
-//     if (rmw_uros_epoch_synchronized()) return true; // synchronized previously
-//     // get the current time from the agent
-//     RCCHECK(rmw_uros_sync_session(timeout_ms));
-//     if (rmw_uros_epoch_synchronized()) {
-// #if (_POSIX_TIMERS > 0)
-//         // Get time in milliseconds or nanoseconds
-//         int64_t time_ns = rmw_uros_epoch_nanos();
-//     timespec tp;
-//     tp.tv_sec = time_ns / 1000000000;
-//     tp.tv_nsec = time_ns % 1000000000;
-//     clock_settime(CLOCK_REALTIME, &tp);
-// #else
-//     unsigned long long ros_time_ms = rmw_uros_epoch_millis();
-//     // now we can find the difference between ROS time and uC time
-//     time_offset = ros_time_ms - millis();
-// #endif
-//     return true;
-//     }
-//     return false;
-// }
-
-// ===========NEW IMPLEMENT=============
-// struct timespec getTime()
-// {
-//     struct timespec tp = {0};
-// #if (_POSIX_TIMERS > 0)
-//     clock_gettime(CLOCK_REALTIME, &tp);
-// #else
-//     // add time difference between uC time and ROS time to
-//     // synchronize time with ROS
-//     unsigned long long now = millis() + time_offset;
-//     tp.tv_sec = now / 1000;
-//     tp.tv_nsec = (now % 1000) * 1000000;
-// #endif
-//     return tp;
-// }
-
-void twistCallback(const void * msgin)
-{
-    setLed(!getLed());
-
-    prev_cmd_time = millis();
-}
-
-// 250526 Not use
-/*
-#ifdef JOINT_STATE_SUBSCRIBER
-
-rcl_subscription_t joint_subscriber;
-sensor_msgs__msg__JointState joint_msg;
-
-void jointCallback(const void *msgin)
-{
-    syslog(LOG_INFO, "%s %lu", __FUNCTION__, millis());
-}
-#endif
-*/
-
-void publishData()
-{
-//     static unsigned skip_dip = 0;
-//     odom_msg = odometry.getData();
-//     imu_msg = imu.getData();
-// #ifdef USE_FAKE_IMU
-//     imu_msg.angular_velocity.z = odom_msg.twist.twist.angular.z;
-// #endif
-//     mag_msg = mag.getData();
-// #ifdef MAG_BIAS
-//     const float mag_bias[3] = MAG_BIAS;
-//     mag_msg.magnetic_field.x -= mag_bias[0];
-//     mag_msg.magnetic_field.y -= mag_bias[1];
-//     mag_msg.magnetic_field.z -= mag_bias[2];
-// #endif
-
-//     struct timespec time_stamp = getTime();
-
-//     odom_msg.header.stamp.sec = time_stamp.tv_sec;
-//     odom_msg.header.stamp.nanosec = time_stamp.tv_nsec;
-
-//     imu_msg.header.stamp.sec = time_stamp.tv_sec;
-//     imu_msg.header.stamp.nanosec = time_stamp.tv_nsec;
-
-// #ifndef USE_FAKE_MAG
-//     mag_msg.header.stamp.sec = time_stamp.tv_sec;
-//     mag_msg.header.stamp.nanosec = time_stamp.tv_nsec;
-// #endif
-
-//     RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
-// #ifndef USE_FAKE_MAG
-//     RCSOFTCHECK(rcl_publish(&mag_publisher, &mag_msg, NULL));
-// #endif
-//     RCSOFTCHECK(rcl_publish(&odom_publisher, &odom_msg, NULL));
-// #if defined(BATTERY_PIN) || defined(USE_INA219)
-//     battery_msg = getBattery();
-//     battery_msg.header.stamp.sec = time_stamp.tv_sec;
-//     battery_msg.header.stamp.nanosec = time_stamp.tv_nsec;
-// #ifdef BATTERY_DIP
-//     if (!skip_dip && battery_msg.voltage > 1.0  && battery_msg.voltage < prev_voltage * BATTERY_DIP) {
-//         RCSOFTCHECK(rcl_publish(&battery_publisher, &battery_msg, NULL));
-//     syslog(LOG_WARNING, "%s voltage dip %.2f", __FUNCTION__, battery_msg.voltage);
-//         skip_dip = 5;
-//     }
-//     if (skip_dip) skip_dip--;
-// #endif
-//     battery_msg.voltage = prev_voltage = battery_msg.voltage * 0.01 + prev_voltage * 0.99;
-//     EXECUTE_EVERY_N_MS(BATTERY_TIMER, {
-//         getBatteryPercentage(&battery_msg);
-//         RCSOFTCHECK(rcl_publish(&battery_publisher, &battery_msg, NULL)) });
-// #endif
-// #ifdef ECHO_PIN
-//     EXECUTE_EVERY_N_MS(RANGE_TIMER, {
-//         range_msg = getRange();
-//         range_msg.header.stamp.sec = time_stamp.tv_sec;
-//         range_msg.header.stamp.nanosec = time_stamp.tv_nsec;
-//         RCSOFTCHECK(rcl_publish(&range_publisher, &range_msg, NULL)) });
-// #endif
-}
-
-// void controlCallback(rcl_timer_t * timer, int64_t last_call_time)
-// {
-//     RCLC_UNUSED(last_call_time);
-//     if (timer != NULL)
-//     {
-//        moveBase();
-//        publishData();
-//     }
-// }
-
-bool createEntities()
-{
-//     syslog(LOG_INFO, "%s %lu", __FUNCTION__, millis());
-//     allocator = rcl_get_default_allocator();
-//     //create init_options
-//     RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
-//     // create node
-//     RCCHECK(rclc_node_init_default(&node, NODE_NAME, "", &support));
-//     // create odometry publisher
-//     RCCHECK(rclc_publisher_init_default(
-//         &odom_publisher,
-//         &node,
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-//         TOPIC_PREFIX "odom/unfiltered"
-//     ));
-//     // create IMU publisher
-//     RCCHECK(rclc_publisher_init_default(
-//         &imu_publisher,
-//         &node,
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-//     // if we have magnetomter, use imu/data_raw for madgwick filter
-// #ifndef USE_FAKE_MAG
-//         TOPIC_PREFIX "imu/data_raw"
-// #else
-//         TOPIC_PREFIX "imu/data"
-// #endif
-//     ));
-// #ifndef USE_FAKE_MAG
-//     RCCHECK(rclc_publisher_init_default(
-//         &mag_publisher,
-//         &node,
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
-//         TOPIC_PREFIX "imu/mag"
-//     ));
-// #endif
-// #if defined(BATTERY_PIN) || defined(USE_INA219)
-//     // create battery pyblisher
-//     RCCHECK(rclc_publisher_init_default(
-//     &battery_publisher,
-//     &node,
-//     ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
-//     TOPIC_PREFIX "battery"
-//     ));
-// #endif
-// #ifdef ECHO_PIN
-//     // create range pyblisher
-//     RCCHECK(rclc_publisher_init_default(
-//     &range_publisher,
-//     &node,
-//     ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Range),
-//     TOPIC_PREFIX "sonar"
-//     ));
-// #endif
-//     // create twist command subscriber
-//     RCCHECK(rclc_subscription_init_default(
-//         &twist_subscriber,
-//         &node,
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-//         TOPIC_PREFIX "cmd_vel"
-//     ));
-// #ifdef JOINT_STATE_SUBSCRIBER
-//     // create joint command subscriber
-//     RCCHECK(rclc_subscription_init_default(
-//         &joint_subscriber,
-//         &node,
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
-//         TOPIC_PREFIX JOINT_STATE_SUBSCRIBER
-//     ));
-// #endif
-//     // create timer for actuating the motors at 50 Hz (1000/20)
-//     const unsigned int control_timeout = CONTROL_TIMER;
-//     RCCHECK(rclc_timer_init_default(
-//         &control_timer,
-//         &support,
-//         RCL_MS_TO_NS(control_timeout),
-//         controlCallback
-//     ));
-//     RCCHECK(rclc_executor_init(&executor, &support.context, 3, &allocator));
-//     RCCHECK(rclc_executor_add_subscription(
-//         &executor,
-//         &twist_subscriber,
-//         &twist_msg,
-//         &twistCallback,
-//         ON_NEW_DATA
-//     ));
-// #ifdef JOINT_STATE_SUBSCRIBER
-//     RCCHECK(rclc_executor_add_subscription(
-//         &executor,
-//         &joint_subscriber,
-//         &joint_msg,
-//         &jointCallback,
-//         ON_NEW_DATA
-//     ));
-// #endif
-//     RCCHECK(rclc_executor_add_timer(&executor, &control_timer));
-
-//     // synchronize time with the agent
-//     syncTime();
-//     setLed(HIGH);
-
-    return true;
-}
-
-bool destroyEntities()
-{
-//     syslog(LOG_INFO, "%s %lu", __FUNCTION__, millis());
-//     rmw_context_t * rmw_context = rcl_context_get_rmw_context(&support.context);
-//     (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
-
-//     RCSOFTCHECK(rcl_publisher_fini(&odom_publisher, &node));
-//     RCSOFTCHECK(rcl_publisher_fini(&imu_publisher, &node));
-// #ifndef USE_FAKE_MAG
-//     RCSOFTCHECK(rcl_publisher_fini(&mag_publisher, &node));
-// #endif
-// #if defined(BATTERY_PIN) || defined(USE_INA219)
-//     RCSOFTCHECK(rcl_publisher_fini(&battery_publisher, &node));
-// #endif
-// #ifdef ECHO_PIN
-//     RCSOFTCHECK(rcl_publisher_fini(&range_publisher, &node));
-// #endif
-//     RCSOFTCHECK(rcl_subscription_fini(&twist_subscriber, &node));
-// #ifdef JOINT_STATE_SUBSCRIBER
-//     RCSOFTCHECK(rcl_subscription_fini(&joint_subscriber, &node));
-// #endif
-//     RCSOFTCHECK(rcl_timer_fini(&control_timer));
-//     RCSOFTCHECK(rclc_executor_fini(&executor));
-//     RCSOFTCHECK(rcl_node_fini(&node))
-//     RCSOFTCHECK(rclc_support_fini(&support));
-
-//     setLed(HIGH);
-
-    return true;
-}
-
-void setup()
-{
-    Serial.begin(BAUDRATE);
-    Serial1.begin(115200);
-    // Set timeout to waiting data
-    Serial.setTimeout(1000);
-    Serial1.setTimeout(1000);
-// #ifdef ESP32
-//     Serial.setRxBufferSize(1024);
-// #endif
-    initLed();
-// #ifdef BOARD_INIT // board specific setup, must include Wire.begin
-//     BOARD_INIT
-// #else
-//     Wire.begin();
-// #endif
-
-// #ifdef WDT_TIMEOUT
-//     esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
-//     esp_task_wdt_add(NULL); //add current thread to WDT watch
-// #endif
-//     initWifis();
-//     initOta();
-    // i2cdetect();  // default range from 0x03 to 0x77
-    initPwm();
-    motor1_controller.begin();
-    motor2_controller.begin();
-    motor3_controller.begin();
-    motor4_controller.begin();
-    // bool imu_ok = imu.init();
-    // if (!imu_ok) // take IMU failure as fatal
-    // {
-    //     Serial1.println("IMU init failed");
-    //     // syslog(LOG_INFO, "%s IMU init failed %lu", __FUNCTION__, millis());
-    //     while (1)
-    //     {
-    //         flashLED(3); // flash 3 times
-    //         // runWifis();
-    //         // runOta();
-    //     }
-    // }
-    // bool mag_ok = mag.init();
-    // if (!mag_ok) // take IMU failure as fatal
-    // {
-    //     Serial1.println("MAG init failed");
-    //     // syslog(LOG_INFO, "%s MAG init failed %lu", __FUNCTION__, millis());
-    //     while (1)
-    //     {
-    //         flashLED(4); // flash 4 times
-    //         // runWifis();
-    //         // runOta();
-    //     }
-    // }
-    // initBattery();
-    // initRange();
-    // initLidar(); // after wifi connected
-    // battery_msg = getBattery();
-    // prev_voltage = battery_msg.voltage;
-// #ifdef JOINT_STATE_SUBSCRIBER
-//     // allocate dynamic msg memory
-//     static micro_ros_utilities_memory_conf_t conf = {0};
-//     conf.max_string_capacity = 20;
-//     conf.max_ros2_type_sequence_capacity = 10;
-//     conf.max_basic_type_sequence_capacity = 10;
-//     bool success = micro_ros_utilities_create_message_memory(
-//         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
-//         &joint_msg,
-//         conf
-//     );
-//     syslog(LOG_INFO, "%s %lu allocate msg %d", __FUNCTION__, millis(), success);
-// #endif
-
-// #ifdef MICRO_ROS_TRANSPORT_ARDUINO_WIFI
-//     set_microros_net_transports(AGENT_IP, AGENT_PORT);
-// #else
-//     set_microros_serial_transports(Serial);
-// #endif
-
-// #ifdef BOARD_INIT_LATE // board specific setup
-//     BOARD_INIT_LATE
-// #endif
-//     syslog(LOG_INFO, "%s Ready %lu", __FUNCTION__, millis());
-    
-    // Give a initial state
-    state = WAIT_SERVER;
-}
-
-void loop() {
-    switch (state)
+    // Ready to pack RobotSpeed packet
+    // Get current timer as timestamp
+    uint32_t timestamp = millis();
+    // Get the current velocity from upper program
+    float vx = current_vel.linear_x;
+    float vy = current_vel.linear_y;
+    float vrz = current_vel.angular_z;
+    // If client online, send the RobotSpeed packet
+    if (nocs_online)
     {
-        case WAIT_SERVER:
-            while(!Serial.available())
+        // Empty packet
+        char packet[34] = {0};
+        // Header
+        packet[0] = 'A';
+        packet[1] = 'r';
+        // Lenght
+        packet[2] = 28;
+        // Timestamp
+        memcpy(&packet[3], &timestamp, 4);
+        // Each value are float32 format, so 4 bytes each
+        memcpy(&packet[7], &vx, 4);
+        memcpy(&packet[11], &vy, 4);
+        memcpy(&packet[27], &vrz, 4);
+        // Checksum
+        packet[31] = chksum_cal(28, &packet[3]);
+        // Footer
+        packet[32] = 'p';
+        packet[33] = 'k';
+        // Send packet
+        Serial.write(packet, 34);
     }
-//     switch (state)
-//     {
-//         case WAITING_AGENT:
-//             EXECUTE_EVERY_N_MS(500, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
-//             break;
-//         case AGENT_AVAILABLE:
-//             syslog(LOG_INFO, "%s agent available %lu", __FUNCTION__, millis());
-//             state = (true == createEntities()) ? AGENT_CONNECTED : WAITING_AGENT;
-//             if (state == WAITING_AGENT)
-//             {
-//                 destroyEntities();
-//             }
-//             break;
-//         case AGENT_CONNECTED:
-//             EXECUTE_EVERY_N_MS(200, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
-//             if (state == AGENT_CONNECTED)
-//             {
-//                 rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-//             }
-//             break;
-//         case AGENT_DISCONNECTED:
-//             syslog(LOG_INFO, "%s agent disconnected %lu", __FUNCTION__, millis());
-//             fullStop();
-//             destroyEntities();
-//             state = WAITING_AGENT;
-//             break;
-//         default:
-//             break;
-//     }
-//     runWifis();
-//     runOta();
-// #ifdef WDT_TIMEOUT
-//     esp_task_wdt_reset();
-// #endif
-// #ifdef BOARD_LOOP // board specific loop
-//     BOARD_LOOP
-// #endif
+}
+
+void loop()
+{
+    // Grab current timer's value
+    uint32_t now_time = millis();
+    // 檢查距離上次PING是否超過5秒，超過視為斷線，立即剎車並應對
+    if (now_time - last_ping_time > 5000)
+    {
+        // Hint disconnected
+        if (nocs_online)
+            blinkLED(5);
+        // NOCS timeout, don't send speed packet!
+        nocs_online = false;
+        // Write the speeds to 0
+        control_spd_x = 0.0;
+        control_spd_y = 0.0;
+        control_spd_rz = 0.0;
+        // Brake for safety
+        motor1_controller.brake();
+        motor2_controller.brake();
+        motor3_controller.brake();
+        motor4_controller.brake();
+    }
+    // 檢查距離上次接收ControlSpeed是否超過0.5秒，超過了停車以策安全
+    if (now_time - last_ctrl_time > 250)
+    {
+        // No command after 0.5s, auto write zero speed
+        // Turn off LED to hint user
+        digitalWrite(LED_BUILTIN, 0);
+        control_spd_x = 0.0;
+        control_spd_y = 0.0;
+        control_spd_rz = 0.0;
+    }
+    // Handle communication messages at about 50 Hz
+    if (now_time - last_spd_time > 20)
+    {
+        // Reset timer
+        last_spd_time = now_time;
+        // Drive motor and send RobotSpeed packet
+        sendRobotSpeed();
+    }
+    // Check serial each 10ms
+    if (now_time - last_recv_time > 10)
+    {
+        // Reset timer
+        last_recv_time = now_time;
+        // 等待至少有 3 個字節（header 2 + length 1）
+        if (Serial.available() >= 3)
+        {
+            // 讀取 header(2)
+            char header[2];
+            header[0] = Serial.read();
+            // 第一字元不是A就直接跳過，直到A被接收到為止
+            if (header[0] != 'A')
+                return;
+            header[1] = Serial.read();
+            // 判斷 header 是否有效
+            // Request = As
+            // Control Speed = Ac
+            bool validHeader = (header[1] == 's' ||
+                                header[1] == 'c');
+            // Not valid, skip and wait new packet
+            if (!validHeader)
+                return;
+
+            // 讀取長度 (1 byte)
+            int len_i = Serial.read();
+
+            // 檢查緩衝區是否有足夠剩餘資料: payload(len_i) + chksum(1) + footer(2)
+            if (Serial.available() < len_i + 3)
+            {
+                // 不夠資料，捨棄該包
+                return;
+            }
+
+            // 讀取 payload + chksum + footer
+            char buffer[len_i + 3];
+            Serial.readBytes(buffer, len_i + 3);
+
+            // 分離資料
+            char payload[len_i] = {0}; // payload 長度 len_i
+            // Read payload into variable
+            memcpy(payload, buffer, len_i);
+            // Read checksum into variable
+            char chksum = buffer[len_i]; // chksum
+            // Read footer into variable
+            char footer[2];
+            memcpy(footer, &buffer[len_i + 1], 2);
+            // 檢查 footer 是否為 "pk"
+            if (footer[0] == 'p' && footer[1] == 'k')
+            {
+                // Footer corrent, try to calculate checksum to vaildate data
+                char chksum_calc = chksum_cal(len_i, payload);
+                if (chksum_calc == chksum)
+                {
+                    // 封包有效，依 header 呼叫對應函式
+                    if (header[1] == 's')
+                    {
+                        // As = request packet
+                        handleRequestPacket(payload, len_i);
+                    }
+                    else if (header[1] == 'c')
+                    {
+                        // Ac = control speed packet
+                        handleControlSpeed(payload, len_i);
+                    }
+                }
+            }
+        }
+    }
 }

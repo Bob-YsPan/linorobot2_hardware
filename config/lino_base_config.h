@@ -23,67 +23,65 @@
 // #define LINO_BASE MECANUM               // Mecanum drive robot
 
 //uncomment the motor driver you're using
-#define USE_GENERIC_2_IN_MOTOR_DRIVER      // Motor drivers with 2 Direction Pins(INA, INB) and 1 PWM(ENABLE) pin ie. L298, L293, VNH5019
+// define USE_GENERIC_2_IN_MOTOR_DRIVER      // Motor drivers with 2 Direction Pins(INA, INB) and 1 PWM(ENABLE) pin ie. L298, L293, VNH5019
 // #define USE_GENERIC_1_IN_MOTOR_DRIVER   // Motor drivers with 1 Direction Pin(INA) and 1 PWM(ENABLE) pin.
-// #define USE_BTS7960_MOTOR_DRIVER        // BTS7970 Motor Driver
+// ** 2025/03/06 We use BTS7960
+#define USE_BTS7960_MOTOR_DRIVER        // BTS7970 Motor Driver
 // #define USE_ESC_MOTOR_DRIVER            // Motor ESC for brushless motors
 
 //uncomment the IMU you're using
 // #define USE_GY85_IMU
 // #define USE_MPU6050_IMU
 // #define USE_MPU9150_IMU
-// #define USE_MPU9250_IMU
-// #define USE_QMI8658_IMU
-// #define USE_HMC5883L_MAG
-// #define USE_AK8963_MAG
-// #define USE_AK8975_MAG
-// #define USE_AK09918_MAG
-// #define USE_QMC5883L_MAG
-// #define MAG_BIAS { 0, 0, 0 }
-// #define IMU_TWEAK {}
-// #define MAG_TWEAK {}
+// ** 2025/03/06 We have MPU9250 on the board
+// ** 2025/03/31 IMU ignored, cloned forked repo
+// 250501 Remove on board imu and test
+//#define USE_MPU9250_IMU
 
-#define ACCEL_COV { 0.01, 0.01, 0.01 }
-#define GYRO_COV { 0.001, 0.001, 0.001 }
-#define ORI_COV { 0.01, 0.01, 0.01 }
-#define MAG_COV { 1e-12, 1e-12, 1e-12 }
-#define POSE_COV { 0.001, 0.001, 0.001, 0.001, 0.001, 0.001 }
-#define TWIST_COV { 0.001, 0.001, 0.001, 0.003, 0.003, 0.003 }
-
+// ** 2025/03/06 Default PID is 0.6 0.8 0.5, this is the value of our car
 #define K_P 0.6                             // P constant
-#define K_I 0.8                             // I constant
+#define K_I 0.3                             // I constant
 #define K_D 0.5                             // D constant
 
 /*
 ROBOT ORIENTATION
          FRONT
     MOTOR1  MOTOR2  (2WD/ACKERMANN)
-    MOTOR3  MOTOR4  (4WD/MECANUM)
+    MOTOR3  MOTOR4  (4WD/MECANUM)  
          BACK
 */
 
 //define your robot' specs here
-#define MOTOR_MAX_RPM 140                   // motor's max RPM
-#define MAX_RPM_RATIO 0.85                  // max RPM allowed for each MAX_RPM_ALLOWED = MOTOR_MAX_RPM * MAX_RPM_RATIO
+// ** 2025/03/06 Default max 140rpm, this is the value of our car
+// ** 2025/03/12 Actual spec: Max 159.375rpm (after gearbox)
+#define MOTOR_MAX_RPM 159.375                   // motor's max RPM          
+#define MAX_RPM_RATIO 0.85                  // max RPM allowed for each MAX_RPM_ALLOWED = MOTOR_MAX_RPM * MAX_RPM_RATIO          
 #define MOTOR_OPERATING_VOLTAGE 24          // motor's operating voltage (used to calculate max RPM)
-#define MOTOR_POWER_MAX_VOLTAGE 12          // max voltage of the motor's power source (used to calculate max RPM)
-#define MOTOR_POWER_MEASURED_VOLTAGE 12     // current voltage reading of the power connected to the motor (used for calibration)
-#define COUNTS_PER_REV1 144000              // wheel1 encoder's no of ticks per rev
-#define COUNTS_PER_REV2 144000              // wheel2 encoder's no of ticks per rev
-#define COUNTS_PER_REV3 144000              // wheel3 encoder's no of ticks per rev
-#define COUNTS_PER_REV4 144000              // wheel4 encoder's no of ticks per rev
-#define WHEEL_DIAMETER 0.152                // wheel's diameter in meters
-#define LR_WHEELS_DISTANCE 0.271            // distance between left and right wheels
-#define PWM_BITS 10                          // PWM Resolution of the microcontroller
+// ** 2025/03/12 The value is motor at 24v, so use this
+#define MOTOR_POWER_MAX_VOLTAGE 24          // max voltage of the motor's power source (used to calculate max RPM)
+// ** 2025/03/13 I already know the ticks of the motor, so use just same as the power voltage
+#define MOTOR_POWER_MEASURED_VOLTAGE 24     // current voltage reading of the power connected to the motor (used for calibration)
+// ** 2025/03/06 Default 144000 tick, this is the value of our car
+// ** 2025/03/13 Calculated: 1200 pulses/rev -> will do 4 step: A+, B+, A-, B- in about one pulse's time, so need x4 = 4800
+#define COUNTS_PER_REV1 4800              // wheel1 encoder's no of ticks per rev
+#define COUNTS_PER_REV2 4800              // wheel2 encoder's no of ticks per rev
+#define COUNTS_PER_REV3 4800              // wheel3 encoder's no of ticks per rev
+#define COUNTS_PER_REV4 4800              // wheel4 encoder's no of ticks per rev
+// ** 2025/03/06 Default 0.152m, this is the value of our car: observe method: https://baike.pcauto.com.cn/356655.html
+#define WHEEL_DIAMETER 0.355                // wheel's diameter in meters
+// ** 2025/03/06 Default 0.271m, this is the value of our car(56.5cm)
+#define LR_WHEELS_DISTANCE 0.565            // distance between left and right wheels
+// ** 2025/03/06 Default 10bit, this is the value of our car
+#define PWM_BITS 8                          // PWM Resolution of the microcontroller
+// ** 2025/03/06 Can look https://www.pjrc.com/teensy/td_pulse.html to improve performance, 
+// ** Or just keep default (20000)
 #define PWM_FREQUENCY 20000                 // PWM Frequency
-#define SERVO_BITS 12                       // Servo PWM resolution
-#define SERVO_FREQ 50                       // Servo PWM frequency
 
 // INVERT ENCODER COUNTS
-#define MOTOR1_ENCODER_INV false
-#define MOTOR2_ENCODER_INV false
-#define MOTOR3_ENCODER_INV false
-#define MOTOR4_ENCODER_INV false
+#define MOTOR1_ENCODER_INV false 
+#define MOTOR2_ENCODER_INV false 
+#define MOTOR3_ENCODER_INV false 
+#define MOTOR4_ENCODER_INV false 
 
 // INVERT MOTOR DIRECTIONS
 #define MOTOR1_INV false
@@ -92,14 +90,16 @@ ROBOT ORIENTATION
 #define MOTOR4_INV false
 
 // ENCODER PINS
-#define MOTOR1_ENCODER_A 14
-#define MOTOR1_ENCODER_B 15
+// ** 2025/03/06 orig: 1 = 14 15; 2 = 11 12
+// ** 2025/03/11 swap the like for Motor 2 >> so 15, 14 to 14, 15
+#define MOTOR1_ENCODER_A 11
+#define MOTOR1_ENCODER_B 12 
 
-#define MOTOR2_ENCODER_A 11
-#define MOTOR2_ENCODER_B 12
+#define MOTOR2_ENCODER_A 14
+#define MOTOR2_ENCODER_B 15 
 
 #define MOTOR3_ENCODER_A 17
-#define MOTOR3_ENCODER_B 16
+#define MOTOR3_ENCODER_B 16 
 
 #define MOTOR4_ENCODER_A 9
 #define MOTOR4_ENCODER_B 10
@@ -108,7 +108,7 @@ ROBOT ORIENTATION
 #ifdef USE_GENERIC_2_IN_MOTOR_DRIVER
   #define MOTOR1_PWM 21 //Pin no 21 is not a PWM pin on Teensy 4.x, you can swap it with pin no 1 instead.
   #define MOTOR1_IN_A 20
-  #define MOTOR1_IN_B 1
+  #define MOTOR1_IN_B 1 
 
   #define MOTOR2_PWM 5
   #define MOTOR2_IN_A 6
@@ -124,7 +124,7 @@ ROBOT ORIENTATION
 
   #define PWM_MAX pow(2, PWM_BITS) - 1
   #define PWM_MIN -PWM_MAX
-#endif
+#endif 
 
 #ifdef USE_GENERIC_1_IN_MOTOR_DRIVER
   #define MOTOR1_PWM 21 //Pin no 21 is not a PWM pin on Teensy 4.x, you can use pin no 1 instead.
@@ -145,16 +145,18 @@ ROBOT ORIENTATION
 
   #define PWM_MAX pow(2, PWM_BITS) - 1
   #define PWM_MIN -PWM_MAX
-#endif
+#endif 
 
+// ** 2025/03/06 For our car's driver
+// ** Orig: Motor 1 = 21 20; Motor 2 = 5 6
 #ifdef USE_BTS7960_MOTOR_DRIVER
   #define MOTOR1_PWM -1 //DON'T TOUCH THIS! This is just a placeholder
-  #define MOTOR1_IN_A 21 // Pin no 21 is not a PWM pin on Teensy 4.x, you can use pin no 1 instead.
-  #define MOTOR1_IN_B 20 // Pin no 20 is not a PWM pin on Teensy 4.x, you can use pin no 0 instead.
+  #define MOTOR1_IN_A 5 // Pin no 21 is not a PWM pin on Teensy 4.x, you can use pin no 1 instead.
+  #define MOTOR1_IN_B 6 // Pin no 20 is not a PWM pin on Teensy 4.x, you can use pin no 0 instead.
 
   #define MOTOR2_PWM -1 //DON'T TOUCH THIS! This is just a placeholder
-  #define MOTOR2_IN_A 5
-  #define MOTOR2_IN_B 6
+  #define MOTOR2_IN_A 9
+  #define MOTOR2_IN_B 10
 
   #define MOTOR3_PWM -1 //DON'T TOUCH THIS! This is just a placeholder
   #define MOTOR3_IN_A 22
@@ -177,7 +179,7 @@ ROBOT ORIENTATION
   #define MOTOR2_IN_A -1 //DON'T TOUCH THIS! This is just a placeholder
   #define MOTOR2_IN_B -1 //DON'T TOUCH THIS! This is just a placeholder
 
-  #define MOTOR3_PWM 22
+  #define MOTOR3_PWM 22 
   #define MOTOR3_IN_A -1 //DON'T TOUCH THIS! This is just a placeholder
   #define MOTOR3_IN_B -1 //DON'T TOUCH THIS! This is just a placeholder
 
@@ -187,60 +189,6 @@ ROBOT ORIENTATION
 
   #define PWM_MAX 400
   #define PWM_MIN -PWM_MAX
-#endif
-
-// #define USE_WIFI_TRANSPORT  // use micro ros wifi transport
-#define AGENT_IP { 192, 168, 1, 100 }  // eg IP of the desktop computer
-#define AGENT_PORT 8888
-// Enable WiFi with null terminated list of multiple APs SSID and password
-// #define WIFI_AP_LIST {{"WIFI_SSID", "WIFI_PASSWORD"}, {NULL}}
-// #define WIFI_MONITOR 2 // min. period to send wifi signal strength to syslog
-// #define USE_ARDUINO_OTA
-// #define USE_SYSLOG
-#define SYSLOG_SERVER { 192, 168, 1, 100 }  // eg IP of the desktop computer
-#define SYSLOG_PORT 514
-#define DEVICE_HOSTNAME "linorobot2"
-#define APP_NAME "hardware"
-// #define USE_LIDAR_UDP  // send lidar data to udp server
-#define LIDAR_RXD 4
-#define LIDAR_SERIAL 1 // uart number
-#define LIDAR_BAUDRATE 230400
-#define LIDAR_SERVER { 192, 168, 1, 100 }  // eg IP of the desktop computer
-#define LIDAR_PORT 8889
-// #define BAUDRATE 115200
-// #define SDA_PIN 18 // specify I2C pins
-// #define SCL_PIN 19
-#define NODE_NAME "linorobot_base_node"
-// #define TOPIC_PREFIX "myrobot/"
-// #define CONTROL_TIMER 20
-// #define BATTERY_TIMER 2000
-
-// battery voltage ADC pin
-// #define BATTERY_PIN 33
-// 3.3V ref, 12 bits ADC, 33k + 10k voltage divider
-#define BATTERY_ADJUST(v) ((v) * (3.3 / 4096 * (33 + 10) / 10))
-// #define USE_INA219
-#define BATTERY_DIP 0.98  // battery voltage drop alert
-// #define BATTERY_CAP 2.0  // battery capacity Ah
-// #define BATTERY_MIN 9.0  // battery minimal voltage
-// #define BATTERY_MAX 12.6 // battery maximum voltage
-// #define TRIG_PIN 31 // ultrasonic sensor HC-SR04
-// #define ECHO_PIN 32
-// #define USE_SHORT_BRAKE // for shorter stopping distance
-// #define WDT_TIMEOUT 30 // Sec
-// #define BOARD_INIT { Wire.begin(); } // needed for i2cdetect
-// #define BOARD_INIT_LATE {}
-// #define BOARD_LOOP {}
-// #define JOINT_STATE_SUBSCRIBER "joint_states"
-
-#ifdef USE_SYSLOG
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ \
-    syslog(LOG_ERR, "%s RCCHECK failed %d", __FUNCTION__, temp_rc); \
-    return false; }}
-#else
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ \
-    flashLED(3); \
-    return false; }} // do not block
 #endif
 
 #endif

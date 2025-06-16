@@ -8,6 +8,7 @@ struct Vector3 {
     float z;
 };
 
+// using 讓等號左邊跟右邊的名稱皆可以使用，並代表同一個物件
 using geometry_msgs__msg__Vector3 = Vector3;
 
 // ======= Twist Struct (for completeness) =======
