@@ -52,6 +52,21 @@ def generate_launch_description():
             name='vdcs_receiver_node',
             output='screen',
         ),
+
+        
+        # Custom IMU Driver with/without magnetometer
+        Node(
+            package='serial_imu_bridge',
+            executable='serial_imu_bridge',
+            name='serial_imu_bridge',
+            output='screen',
+            parameters=[{
+                # With magnetometer = /imu/data
+                # Without magnetometer = /imu/data_raw
+                'imu_topic': '/imu/data',
+            }]
+        ),
+
         #you can load your custom urdf launcher here
         #for demo's sake we'll use the default description launch file
         IncludeLaunchDescription(
