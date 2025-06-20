@@ -48,12 +48,22 @@ float control_spd_x = 0.0;
 float control_spd_y = 0.0;
 float control_spd_rz = 0.0;
 
+// Step for receiving
+int step = 0;
+
+// Variables for receiving
+char header[2];
+int len_i = 0;
+char payload[32];  // Max payload = 28 bytes
+char chksum = 0;
+char footer[2];
+
 void setup()
 {
     // 通訊介面（對 ROS2）
     Serial.begin(115200);
     // Set timeout prevent program stuck when serial data problem
-    Serial.setTimeout(100);
+    Serial.setTimeout(10);
     //   Serial1.begin(115200);  // 測試指令介面（安裝另一個UART Converter後可以擴充這部分）
     //   Serial1.println("MCU Ready!");
     // Init status LED
@@ -95,7 +105,7 @@ void blinkLED(int count)
 // Usage:
 // length = length of payload to generate checksum
 // payload = pointer for the payload's start point
-// (Start from array's third element: &payload[2])
+// (If you need start from array's third element: &payload[2])
 char chksum_cal(int length, char *payload)
 {
     char chksum_calc = 0;
@@ -264,16 +274,13 @@ void loop()
         // Drive motor and send RobotSpeed packet
         sendRobotSpeed();
     }
-    // Check serial each 10ms
-    if (now_time - last_recv_time > 10)
+    // Receiving part
+    switch (step)
     {
-        // Reset timer
-        last_recv_time = now_time;
-        // 等待至少有 3 個字節（header 2 + length 1）
-        if (Serial.available() >= 3)
+        // Wait data and header check
+        case 0:
         {
             // 讀取 header(2)
-            char header[2];
             header[0] = Serial.read();
             // 第一字元不是A就直接跳過，直到A被接收到為止
             if (header[0] != 'A')
@@ -287,50 +294,86 @@ void loop()
             // Not valid, skip and wait new packet
             if (!validHeader)
                 return;
-
+            else
+            {
+                // Vaild header, goto next step
+                step = 1;
+            }
+            break;
+        }
+        // Length check
+        case 1:
+        {
             // 讀取長度 (1 byte)
-            int len_i = Serial.read();
-
+            len_i = Serial.read();
             // 檢查緩衝區是否有足夠剩餘資料: payload(len_i) + chksum(1) + footer(2)
             if (Serial.available() < len_i + 3)
             {
                 // 不夠資料，捨棄該包
+                step = 0;
                 return;
             }
-
-            // 讀取 payload + chksum + footer
+            else
+                step = 2;
+            break;
+        }
+        // Slice data and footer check
+        case 2:
+        {
             char buffer[len_i + 3];
+            // 讀取 payload + chksum + footer
             Serial.readBytes(buffer, len_i + 3);
-
             // 分離資料
-            char payload[len_i] = {0}; // payload 長度 len_i
             // Read payload into variable
             memcpy(payload, buffer, len_i);
             // Read checksum into variable
-            char chksum = buffer[len_i]; // chksum
+            chksum = buffer[len_i];
             // Read footer into variable
-            char footer[2];
             memcpy(footer, &buffer[len_i + 1], 2);
             // 檢查 footer 是否為 "pk"
             if (footer[0] == 'p' && footer[1] == 'k')
+                step = 3;
+            else
             {
-                // Footer corrent, try to calculate checksum to vaildate data
-                char chksum_calc = chksum_cal(len_i, payload);
-                if (chksum_calc == chksum)
-                {
-                    // 封包有效，依 header 呼叫對應函式
-                    if (header[1] == 's')
-                    {
-                        // As = request packet
-                        handleRequestPacket(payload, len_i);
-                    }
-                    else if (header[1] == 'c')
-                    {
-                        // Ac = control speed packet
-                        handleControlSpeed(payload, len_i);
-                    }
-                }
+                step = 0;
+                return;
             }
+            break;
         }
+        // Checksum vaildation
+        case 3:
+        {
+            // Footer correct, try to calculate checksum to vaildate data
+            char chksum_calc = chksum_cal(len_i, payload);
+            if (chksum_calc == chksum)
+            {
+                step = 4;
+            }
+            else
+            {
+                step = 0;
+                return;
+            }
+            break;
+        }
+        // Header check and run the handler
+        case 4:
+        {
+            // 封包有效，依 header 呼叫對應函式
+            if (header[1] == 's')
+            {
+                // As = request packet
+                handleRequestPacket(payload, len_i);
+            }
+            else if (header[1] == 'c')
+            {
+                // Ac = control speed packet
+                handleControlSpeed(payload, len_i);
+            }
+            step = 0;
+            break;
+        }
+        default:
+            break;
     }
 }
