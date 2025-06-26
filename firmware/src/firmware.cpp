@@ -256,7 +256,7 @@ void loop()
         motor3_controller.brake();
         motor4_controller.brake();
     }
-    // 檢查距離上次接收ControlSpeed是否超過0.5秒，超過了停車以策安全
+    // 檢查距離上次接收ControlSpeed是否超過0.25秒，超過了停車以策安全
     if (now_time - last_ctrl_time > 250)
     {
         // No command after 0.5s, auto write zero speed

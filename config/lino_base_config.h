@@ -71,11 +71,12 @@ ROBOT ORIENTATION
 #define WHEEL_DIAMETER 0.355                // wheel's diameter in meters
 // ** 2025/03/06 Default 0.271m, this is the value of our car(56.5cm)
 #define LR_WHEELS_DISTANCE 0.565            // distance between left and right wheels
-// ** 2025/03/06 Default 10bit, this is the value of our car
+// ** 2025/03/06 Default 10bit, the original value of our car is 8 bit, higher seems not work
 #define PWM_BITS 8                          // PWM Resolution of the microcontroller
 // ** 2025/03/06 Can look https://www.pjrc.com/teensy/td_pulse.html to improve performance, 
 // ** Or just keep default (20000)
-#define PWM_FREQUENCY 20000                 // PWM Frequency
+// Teensy 3.1 = 96 MHz, 11718.75 Hz at 12 bit or 187500 at 8 bit (Too high!, limit is 25k)
+#define PWM_FREQUENCY 18750                 // PWM Frequency
 
 // INVERT ENCODER COUNTS
 #define MOTOR1_ENCODER_INV false 
